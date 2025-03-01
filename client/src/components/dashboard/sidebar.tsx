@@ -13,20 +13,29 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
-const menuItems = [
-  { icon: Home, label: "Dashboard", href: "/dashboard" },
-  { icon: Building2, label: "Properties", href: "/dashboard/properties" },
-  { icon: Shield, label: "Security", href: "/dashboard/security" },
-  { icon: LineChart, label: "Analytics", href: "/dashboard/analytics" },
-  { icon: MessageSquare, label: "Messages", href: "/dashboard/messages" },
-  { icon: Bell, label: "Notifications", href: "/dashboard/notifications" },
-  { icon: CreditCard, label: "Billing", href: "/dashboard/billing" },
-  { icon: Settings, label: "Settings", href: "/dashboard/settings" },
-];
+const getMenuItems = (role: string) => {
+  const baseItems = [
+    { icon: Home, label: "Dashboard", href: "/dashboard" },
+    { icon: Building2, label: "Properties", href: "/dashboard/properties" },
+    { icon: Shield, label: "Security", href: "/dashboard/security" },
+    { icon: LineChart, label: "Analytics", href: "/dashboard/analytics" },
+    { icon: MessageSquare, label: "Messages", href: "/dashboard/messages" },
+    { icon: Bell, label: "Notifications", href: "/dashboard/notifications" },
+    { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+  ];
+
+  // Only show billing for tenants
+  if (role === 'tenant') {
+    baseItems.splice(6, 0, { icon: CreditCard, label: "Billing", href: "/dashboard/billing" });
+  }
+
+  return baseItems;
+};
 
 export default function Sidebar() {
-  const { logoutMutation } = useAuth();
+  const { logoutMutation, user } = useAuth();
   const [location] = useLocation();
+  const menuItems = getMenuItems(user?.role || '');
 
   return (
     <div className="w-64 border-r bg-card flex flex-col">

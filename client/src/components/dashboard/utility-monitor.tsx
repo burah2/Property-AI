@@ -3,7 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, Building2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PaymentForm } from "../billing/payment-form";
 
 // Mock data - to be replaced with real-time data
 const mockData = {
@@ -55,14 +59,23 @@ const mockData = {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export default function UtilityMonitor() {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState("day");
   const [viewMode, setViewMode] = useState("building");
+  const [selectedUtility, setSelectedUtility] = useState<{
+    type: string;
+    amount: number;
+  } | null>(null);
 
   // Calculate total usage for pie chart
   const unitTotals = Object.entries(mockData.units).map(([unit, data]) => ({
     name: unit,
     value: data.electricity.usage + data.water.usage + data.gas.usage,
   }));
+
+  const handlePayNow = (utilityType: string, amount: number) => {
+    setSelectedUtility({ type: utilityType, amount });
+  };
 
   return (
     <div className="space-y-4">
@@ -192,6 +205,7 @@ export default function UtilityMonitor() {
           const previousUsage = data[data.length - 2].usage;
           const change = ((currentUsage - previousUsage) / previousUsage) * 100;
           const isHighUsage = change > 20;
+          const currentCost = data[data.length - 1].cost;
 
           return (
             <Card key={utility}>
@@ -220,14 +234,50 @@ export default function UtilityMonitor() {
                   {change > 0 ? "+" : ""}
                   {change.toFixed(1)}% from last hour
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Cost: ${(data[data.length - 1].cost).toFixed(2)}
-                </p>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-sm text-muted-foreground">
+                    Cost: ${currentCost.toFixed(2)}
+                  </p>
+                  {user?.role === 'tenant' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePayNow(utility, currentCost)}
+                    >
+                      Pay Now
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      <Dialog open={!!selectedUtility} onOpenChange={() => setSelectedUtility(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pay {selectedUtility?.type} Bill</DialogTitle>
+          </DialogHeader>
+          {selectedUtility && (
+            <PaymentForm
+              invoice={{
+                id: 0, // This would be replaced with actual invoice ID
+                amount: selectedUtility.amount,
+                type: selectedUtility.type,
+                status: "pending",
+                dueDate: new Date(),
+                propertyId: 0,
+                tenantId: user?.id || 0,
+                period: {},
+                details: {},
+                createdAt: new Date()
+              }}
+              onSuccess={() => setSelectedUtility(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
