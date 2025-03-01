@@ -9,6 +9,8 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("tenant"),
   name: text("name").notNull(),
   email: text("email").notNull(),
+  phone: text("phone"),
+  specialization: text("specialization"), // For staff: plumber, electrician, etc.
 });
 
 export const properties = pgTable("properties", {
@@ -35,9 +37,26 @@ export const maintenanceRequests = pgTable("maintenance_requests", {
   id: serial("id").primaryKey(),
   propertyId: integer("property_id").notNull(),
   tenantId: integer("tenant_id").notNull(),
+  assignedStaffId: integer("assigned_staff_id"),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  category: text("category").notNull(), // plumbing, electrical, etc.
   status: text("status").notNull().default("pending"),
+  priority: text("priority").notNull().default("medium"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  resolution: text("resolution"),
+});
+
+export const maintenanceReports = pgTable("maintenance_reports", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull(),
+  staffId: integer("staff_id").notNull(),
+  description: text("description").notNull(),
+  workDone: text("work_done").notNull(),
+  materials: jsonb("materials").notNull().default([]),
+  cost: decimal("cost"),
+  timeSpent: text("time_spent"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -75,20 +94,14 @@ export const paymentReminders = pgTable("payment_reminders", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  role: true,
-  name: true,
-  email: true,
-});
-
+export const insertUserSchema = createInsertSchema(users);
 export const insertPropertySchema = createInsertSchema(properties);
 export const insertSecurityAlertSchema = createInsertSchema(securityAlerts);
 export const insertMaintenanceRequestSchema = createInsertSchema(maintenanceRequests);
 export const insertInvoiceSchema = createInsertSchema(invoices);
 export const insertPaymentSchema = createInsertSchema(payments);
 export const insertPaymentReminderSchema = createInsertSchema(paymentReminders);
+export const insertMaintenanceReportSchema = createInsertSchema(maintenanceReports);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -98,3 +111,13 @@ export type MaintenanceRequest = typeof maintenanceRequests.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type PaymentReminder = typeof paymentReminders.$inferSelect;
+export type MaintenanceReport = typeof maintenanceReports.$inferSelect;
+
+// Maintenance categories and their corresponding staff specializations
+export const MAINTENANCE_CATEGORIES = {
+  plumbing: "plumber",
+  electrical: "electrician",
+  hvac: "hvac_technician",
+  carpentry: "carpenter",
+  general: "maintenance_staff",
+} as const;

@@ -43,16 +43,6 @@ const mockData = {
       water: { usage: 120, cost: 24 },
       gas: { usage: 80, cost: 40 },
     },
-    "Unit 102": {
-      electricity: { usage: 380, cost: 76 },
-      water: { usage: 90, cost: 18 },
-      gas: { usage: 60, cost: 30 },
-    },
-    "Unit 103": {
-      electricity: { usage: 520, cost: 104 },
-      water: { usage: 150, cost: 30 },
-      gas: { usage: 100, cost: 50 },
-    },
   },
 };
 
@@ -61,29 +51,119 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 export default function UtilityMonitor() {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState("day");
-  const [viewMode, setViewMode] = useState("building");
   const [selectedUtility, setSelectedUtility] = useState<{
     type: string;
     amount: number;
   } | null>(null);
 
-  console.log("Current user role:", user?.role); // Add this for debugging
-
-  // Calculate total usage for pie chart
-  const unitTotals = Object.entries(mockData.units).map(([unit, data]) => ({
-    name: unit,
-    value: data.electricity.usage + data.water.usage + data.gas.usage,
-  }));
+  const isLandlord = user?.role === 'landlord';
 
   const handlePayNow = (utilityType: string, amount: number) => {
-    console.log("Pay Now clicked for:", utilityType, amount); // Add this for debugging
     setSelectedUtility({ type: utilityType, amount });
   };
 
+  if (!isLandlord) {
+    // Tenant View - Show only their unit's data
+    return (
+      <div className="space-y-4">
+        <Select value={timeRange} onValueChange={setTimeRange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select time range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="day">Last 24 Hours</SelectItem>
+            <SelectItem value="week">Last Week</SelectItem>
+            <SelectItem value="month">Last Month</SelectItem>
+            <SelectItem value="year">Last Year</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="grid grid-cols-3 gap-4">
+          {Object.entries(mockData.building).map(([utility, data]) => {
+            const currentUsage = data[data.length - 1].usage;
+            const previousUsage = data[data.length - 2].usage;
+            const change = ((currentUsage - previousUsage) / previousUsage) * 100;
+            const isHighUsage = change > 20;
+            const currentCost = data[data.length - 1].cost;
+
+            return (
+              <Card key={utility}>
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium capitalize">{utility}</h4>
+                      <div className="mt-2">
+                        <span className="text-2xl font-bold">
+                          {currentUsage.toFixed(1)}
+                        </span>
+                        <span className="text-sm text-muted-foreground ml-1">
+                          {utility === 'electricity' ? 'kWh' : 'm³'}
+                        </span>
+                      </div>
+                    </div>
+                    {isHighUsage && (
+                      <AlertCircle className="h-5 w-5 text-destructive" />
+                    )}
+                  </div>
+                  <p
+                    className={`text-sm mt-1 ${
+                      change > 0 ? "text-destructive" : "text-green-600"
+                    }`}
+                  >
+                    {change > 0 ? "+" : ""}
+                    {change.toFixed(1)}% from last hour
+                  </p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-sm text-muted-foreground">
+                      Cost: ${currentCost.toFixed(2)}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePayNow(utility, currentCost)}
+                    >
+                      Pay Now
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        <Dialog open={!!selectedUtility} onOpenChange={() => setSelectedUtility(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Pay {selectedUtility?.type} Bill</DialogTitle>
+            </DialogHeader>
+            {selectedUtility && (
+              <PaymentForm
+                invoice={{
+                  id: 0,
+                  amount: selectedUtility.amount.toString(),
+                  type: selectedUtility.type,
+                  status: "pending",
+                  dueDate: new Date(),
+                  propertyId: 0,
+                  tenantId: user?.id || 0,
+                  period: {},
+                  details: {},
+                  createdAt: new Date()
+                }}
+                onSuccess={() => setSelectedUtility(null)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // Landlord View - Show building overview and unit breakdown
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Tabs value={viewMode} onValueChange={setViewMode} className="w-[400px]">
+        <Tabs defaultValue="building" className="w-[400px]">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="building">Building Overview</TabsTrigger>
             <TabsTrigger value="units">Unit Breakdown</TabsTrigger>
@@ -103,184 +183,48 @@ export default function UtilityMonitor() {
         </Select>
       </div>
 
-      {viewMode === "building" ? (
-        <Tabs defaultValue="electricity">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="electricity">Electricity</TabsTrigger>
-            <TabsTrigger value="water">Water</TabsTrigger>
-            <TabsTrigger value="gas">Gas</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="electricity">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="electricity">Electricity</TabsTrigger>
+          <TabsTrigger value="water">Water</TabsTrigger>
+          <TabsTrigger value="gas">Gas</TabsTrigger>
+        </TabsList>
 
-          {Object.entries(mockData.building).map(([utility, data]) => (
-            <TabsContent key={utility} value={utility}>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={data}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip />
-                    <Line
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="usage"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      name={`${utility} Usage (${utility === 'electricity' ? 'kWh' : utility === 'water' ? 'm³' : 'm³'})`}
-                    />
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="cost"
-                      stroke="hsl(var(--destructive))"
-                      strokeWidth={2}
-                      name="Cost ($)"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4">Total Usage Distribution</h3>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={unitTotals}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value.toFixed(1)}`}
-                    >
-                      {unitTotals.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            {Object.entries(mockData.units).map(([unit, data]) => (
-              <Card key={unit}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <Building2 className="h-5 w-5 mr-2" />
-                      <h3 className="font-semibold">{unit}</h3>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    {Object.entries(data).map(([utility, { usage, cost }]) => (
-                      <div key={utility}>
-                        <p className="text-sm text-muted-foreground capitalize">{utility}</p>
-                        <p className="text-lg font-semibold">
-                          {usage.toFixed(1)} {utility === 'electricity' ? 'kWh' : 'm³'}
-                        </p>
-                        <p className="text-sm text-muted-foreground">${cost.toFixed(2)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-4 mt-8">
-        {Object.entries(mockData.building).map(([utility, data]) => {
-          const currentUsage = data[data.length - 1].usage;
-          const previousUsage = data[data.length - 2].usage;
-          const change = ((currentUsage - previousUsage) / previousUsage) * 100;
-          const isHighUsage = change > 20;
-          const currentCost = data[data.length - 1].cost;
-
-          return (
-            <Card key={utility}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium capitalize">{utility}</h4>
-                    <div className="mt-2">
-                      <span className="text-2xl font-bold">
-                        {currentUsage.toFixed(1)}
-                      </span>
-                      <span className="text-sm text-muted-foreground ml-1">
-                        {utility === 'electricity' ? 'kWh' : 'm³'}
-                      </span>
-                    </div>
-                  </div>
-                  {isHighUsage && (
-                    <AlertCircle className="h-5 w-5 text-destructive" />
-                  )}
-                </div>
-                <p
-                  className={`text-sm mt-1 ${
-                    change > 0 ? "text-destructive" : "text-green-600"
-                  }`}
+        {Object.entries(mockData.building).map(([utility, data]) => (
+          <TabsContent key={utility} value={utility}>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={data}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
-                  {change > 0 ? "+" : ""}
-                  {change.toFixed(1)}% from last hour
-                </p>
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-sm text-muted-foreground">
-                    Cost: ${currentCost.toFixed(2)}
-                  </p>
-                  {(user?.role === 'tenant' || true) && ( // Temporarily show for all users for testing
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePayNow(utility, currentCost)}
-                    >
-                      Pay Now
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <Dialog open={!!selectedUtility} onOpenChange={() => setSelectedUtility(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Pay {selectedUtility?.type} Bill</DialogTitle>
-          </DialogHeader>
-          {selectedUtility && (
-            <PaymentForm
-              invoice={{
-                id: 0,
-                amount: selectedUtility.amount.toString(), // Convert to string for Invoice type
-                type: selectedUtility.type,
-                status: "pending",
-                dueDate: new Date(),
-                propertyId: 0,
-                tenantId: user?.id || 0,
-                period: {},
-                details: {},
-                createdAt: new Date()
-              }}
-              onSuccess={() => setSelectedUtility(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="usage"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    name={`${utility} Usage (${utility === 'electricity' ? 'kWh' : utility === 'water' ? 'm³' : 'm³'})`}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="cost"
+                    stroke="hsl(var(--destructive))"
+                    strokeWidth={2}
+                    name="Cost ($)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }
