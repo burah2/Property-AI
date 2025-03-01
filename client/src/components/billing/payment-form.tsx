@@ -56,7 +56,7 @@ export function PaymentForm({ invoice, onSuccess }: PaymentFormProps) {
     } catch (error) {
       toast({
         title: "Payment Failed",
-        description: error.message,
+        description: "Failed to process payment. Please try again.",
         variant: "destructive",
       });
     } finally {
