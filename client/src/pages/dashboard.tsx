@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Property, MaintenanceRequest, SecurityAlert } from "@shared/schema";
+import { queryClient } from "@/lib/queryClient";
 import Sidebar from "@/components/dashboard/sidebar";
 import PropertyCard from "@/components/dashboard/property-card";
 import UtilityMonitor from "@/components/dashboard/utility-monitor";
@@ -57,11 +58,34 @@ export default function Dashboard() {
       <Sidebar />
       <main className="flex-1 overflow-auto p-8">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">
-            Welcome, {user?.name}
-          </h1>
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold">
+              Welcome, {user?.name}
+            </h1>
+            <Button variant="outline">Generate Report</Button>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Smart Metering</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <UtilityMonitor />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Security Monitoring</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SecurityFeed alerts={securityAlerts || []} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card>
               <CardHeader>
                 <CardTitle>Properties</CardTitle>
@@ -72,27 +96,6 @@ export default function Dashboard() {
                     <PropertyCard key={property.id} property={property} />
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Utility Usage</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <UtilityMonitor />
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Security Feed</CardTitle>
-                <Button variant="outline" size="sm">View All</Button>
-              </CardHeader>
-              <CardContent>
-                <SecurityFeed alerts={securityAlerts || []} />
               </CardContent>
             </Card>
 
