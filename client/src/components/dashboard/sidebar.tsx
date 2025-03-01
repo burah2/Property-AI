@@ -9,6 +9,7 @@ import {
   LineChart,
   Shield,
   MessageSquare,
+  CreditCard,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -19,6 +20,7 @@ const menuItems = [
   { icon: LineChart, label: "Analytics", href: "/dashboard/analytics" },
   { icon: MessageSquare, label: "Messages", href: "/dashboard/messages" },
   { icon: Bell, label: "Notifications", href: "/dashboard/notifications" },
+  { icon: CreditCard, label: "Billing", href: "/dashboard/billing" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
 ];
 

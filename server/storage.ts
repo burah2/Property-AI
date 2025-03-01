@@ -4,26 +4,44 @@ import session from "express-session";
 
 const MemoryStore = createMemoryStore(session);
 
+// Add to the existing IStorage interface
 export interface IStorage {
   sessionStore: session.Store;
-  
+
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   // Property operations
   getProperties(): Promise<Property[]>;
   getProperty(id: number): Promise<Property | undefined>;
   createProperty(property: Omit<Property, "id">): Promise<Property>;
-  
+
   // Security operations
   getSecurityAlerts(): Promise<SecurityAlert[]>;
   createSecurityAlert(alert: Omit<SecurityAlert, "id">): Promise<SecurityAlert>;
-  
+
   // Maintenance operations
   getMaintenanceRequests(): Promise<MaintenanceRequest[]>;
   createMaintenanceRequest(request: Omit<MaintenanceRequest, "id">): Promise<MaintenanceRequest>;
+
+  // Invoice operations
+  createInvoice(invoice: Omit<Invoice, "id">): Promise<Invoice>;
+  getInvoice(id: number): Promise<Invoice | undefined>;
+  getInvoicesByTenant(tenantId: number): Promise<Invoice[]>;
+  updateInvoiceStatus(id: number, status: string): Promise<Invoice>;
+
+  // Payment operations
+  createPayment(payment: Omit<Payment, "id">): Promise<Payment>;
+  getPayment(id: number): Promise<Payment | undefined>;
+  getPaymentsByInvoice(invoiceId: number): Promise<Payment[]>;
+  updatePayment(id: number, updates: Partial<Payment>): Promise<Payment>;
+
+  // Payment reminder operations
+  createPaymentReminder(reminder: Omit<PaymentReminder, "id">): Promise<PaymentReminder>;
+  getDuePaymentReminders(): Promise<PaymentReminder[]>;
+  updatePaymentReminder(id: number, updates: Partial<PaymentReminder>): Promise<PaymentReminder>;
 }
 
 export class MemStorage implements IStorage {
@@ -32,11 +50,17 @@ export class MemStorage implements IStorage {
   private securityAlerts: Map<number, SecurityAlert>;
   private maintenanceRequests: Map<number, MaintenanceRequest>;
   public sessionStore: session.Store;
-  
+
   private userIdCounter: number;
   private propertyIdCounter: number;
   private alertIdCounter: number;
   private requestIdCounter: number;
+  private invoices: Map<number, Invoice>;
+  private payments: Map<number, Payment>;
+  private paymentReminders: Map<number, PaymentReminder>;
+  private invoiceIdCounter: number;
+  private paymentIdCounter: number;
+  private reminderIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -46,11 +70,17 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
-    
+
     this.userIdCounter = 1;
     this.propertyIdCounter = 1;
     this.alertIdCounter = 1;
     this.requestIdCounter = 1;
+    this.invoices = new Map();
+    this.payments = new Map();
+    this.paymentReminders = new Map();
+    this.invoiceIdCounter = 1;
+    this.paymentIdCounter = 1;
+    this.reminderIdCounter = 1;
   }
 
   // User operations
@@ -109,6 +139,82 @@ export class MemStorage implements IStorage {
     const newRequest = { ...request, id };
     this.maintenanceRequests.set(id, newRequest);
     return newRequest;
+  }
+
+  // Invoice operations
+  async createInvoice(invoice: Omit<Invoice, "id">): Promise<Invoice> {
+    const id = this.invoiceIdCounter++;
+    const newInvoice = { ...invoice, id };
+    this.invoices.set(id, newInvoice);
+    return newInvoice;
+  }
+
+  async getInvoice(id: number): Promise<Invoice | undefined> {
+    return this.invoices.get(id);
+  }
+
+  async getInvoicesByTenant(tenantId: number): Promise<Invoice[]> {
+    return Array.from(this.invoices.values()).filter(
+      (invoice) => invoice.tenantId === tenantId
+    );
+  }
+
+  async updateInvoiceStatus(id: number, status: string): Promise<Invoice> {
+    const invoice = await this.getInvoice(id);
+    if (!invoice) throw new Error("Invoice not found");
+    const updatedInvoice = { ...invoice, status };
+    this.invoices.set(id, updatedInvoice);
+    return updatedInvoice;
+  }
+
+  // Payment operations
+  async createPayment(payment: Omit<Payment, "id">): Promise<Payment> {
+    const id = this.paymentIdCounter++;
+    const newPayment = { ...payment, id };
+    this.payments.set(id, newPayment);
+    return newPayment;
+  }
+
+  async getPayment(id: number): Promise<Payment | undefined> {
+    return this.payments.get(id);
+  }
+
+  async getPaymentsByInvoice(invoiceId: number): Promise<Payment[]> {
+    return Array.from(this.payments.values()).filter(
+      (payment) => payment.invoiceId === invoiceId
+    );
+  }
+
+  async updatePayment(id: number, updates: Partial<Payment>): Promise<Payment> {
+    const payment = await this.getPayment(id);
+    if (!payment) throw new Error("Payment not found");
+    const updatedPayment = { ...payment, ...updates };
+    this.payments.set(id, updatedPayment);
+    return updatedPayment;
+  }
+
+  // Payment reminder operations
+  async createPaymentReminder(reminder: Omit<PaymentReminder, "id">): Promise<PaymentReminder> {
+    const id = this.reminderIdCounter++;
+    const newReminder = { ...reminder, id };
+    this.paymentReminders.set(id, newReminder);
+    return newReminder;
+  }
+
+  async getDuePaymentReminders(): Promise<PaymentReminder[]> {
+    const now = new Date();
+    return Array.from(this.paymentReminders.values()).filter(
+      (reminder) =>
+        reminder.status === "pending" && reminder.scheduledFor <= now
+    );
+  }
+
+  async updatePaymentReminder(id: number, updates: Partial<PaymentReminder>): Promise<PaymentReminder> {
+    const reminder = this.paymentReminders.get(id);
+    if (!reminder) throw new Error("Payment reminder not found");
+    const updatedReminder = { ...reminder, ...updates };
+    this.paymentReminders.set(id, updatedReminder);
+    return updatedReminder;
   }
 }
 
