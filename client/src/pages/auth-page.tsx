@@ -9,11 +9,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema, type InsertUser } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 
 export default function AuthPage() {
   const { loginMutation, registerMutation, user } = useAuth();
   const [, setLocation] = useLocation();
+  const [showPassword, setShowPassword] = useState(false);
 
   if (user) {
     setLocation("/dashboard");
@@ -29,6 +31,10 @@ export default function AuthPage() {
   const registerForm = useForm({
     resolver: zodResolver(insertUserSchema),
   });
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -71,13 +77,44 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <Label>Password</Label>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
+                          <div className="relative">
+                            <FormControl>
+                              <Input 
+                                type={showPassword ? "text" : "password"} 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-2 top-1/2 -translate-y-1/2"
+                              onClick={togglePasswordVisibility}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="px-0 text-sm text-muted-foreground"
+                        onClick={() => {
+                          // TODO: Implement forgot password functionality
+                          alert("Forgot password functionality coming soon!");
+                        }}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
                     <Button
                       type="submit"
                       className="w-full"
@@ -119,9 +156,27 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <Label>Password</Label>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
+                          <div className="relative">
+                            <FormControl>
+                              <Input 
+                                type={showPassword ? "text" : "password"} 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-2 top-1/2 -translate-y-1/2"
+                              onClick={togglePasswordVisibility}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
