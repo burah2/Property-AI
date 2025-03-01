@@ -67,6 +67,8 @@ export default function UtilityMonitor() {
     amount: number;
   } | null>(null);
 
+  console.log("Current user role:", user?.role); // Add this for debugging
+
   // Calculate total usage for pie chart
   const unitTotals = Object.entries(mockData.units).map(([unit, data]) => ({
     name: unit,
@@ -74,6 +76,7 @@ export default function UtilityMonitor() {
   }));
 
   const handlePayNow = (utilityType: string, amount: number) => {
+    console.log("Pay Now clicked for:", utilityType, amount); // Add this for debugging
     setSelectedUtility({ type: utilityType, amount });
   };
 
@@ -238,7 +241,7 @@ export default function UtilityMonitor() {
                   <p className="text-sm text-muted-foreground">
                     Cost: ${currentCost.toFixed(2)}
                   </p>
-                  {user?.role === 'tenant' && (
+                  {(user?.role === 'tenant' || true) && ( // Temporarily show for all users for testing
                     <Button
                       variant="outline"
                       size="sm"
@@ -262,8 +265,8 @@ export default function UtilityMonitor() {
           {selectedUtility && (
             <PaymentForm
               invoice={{
-                id: 0, // This would be replaced with actual invoice ID
-                amount: selectedUtility.amount,
+                id: 0,
+                amount: selectedUtility.amount.toString(), // Convert to string for Invoice type
                 type: selectedUtility.type,
                 status: "pending",
                 dueDate: new Date(),
