@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/use-auth";
-import { insertMaintenanceRequestSchema, type MaintenanceRequest } from "@shared/schema";
+import { insertMaintenanceRequestSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
-export function MaintenanceRequestForm({ propertyId }: { propertyId: number }) {
+interface MaintenanceRequestFormProps {
+  propertyId: number;
+  onSuccess?: () => void;
+}
+
+export function MaintenanceRequestForm({ propertyId, onSuccess }: MaintenanceRequestFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -42,6 +47,7 @@ export function MaintenanceRequestForm({ propertyId }: { propertyId: number }) {
         description: "Your maintenance request has been submitted and assigned to appropriate staff.",
       });
       form.reset();
+      onSuccess?.();
     },
     onError: (error: Error) => {
       toast({

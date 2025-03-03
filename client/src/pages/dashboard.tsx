@@ -6,14 +6,17 @@ import Sidebar from "@/components/dashboard/sidebar";
 import PropertyCard from "@/components/dashboard/property-card";
 import UtilityMonitor from "@/components/dashboard/utility-monitor";
 import SecurityFeed from "@/components/dashboard/security-feed";
-import { useEffect, useRef } from "react";
+import { MaintenanceRequestForm } from "@/components/maintenance/request-form";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const wsRef = useRef<WebSocket | null>(null);
+  const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
 
   const { data: properties, isLoading: propertiesLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -35,7 +38,6 @@ export default function Dashboard() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === "SECURITY_ALERT" || data.type === "URGENT_MAINTENANCE") {
-        // Refresh queries when new alerts come in
         queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
         queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
       }
@@ -102,7 +104,13 @@ export default function Dashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Maintenance Requests</CardTitle>
-                <Button variant="outline" size="sm">New Request</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowMaintenanceForm(true)}
+                >
+                  New Request
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -127,6 +135,18 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      <Dialog open={showMaintenanceForm} onOpenChange={setShowMaintenanceForm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Maintenance Request</DialogTitle>
+          </DialogHeader>
+          <MaintenanceRequestForm 
+            propertyId={properties?.[0]?.id || 0} 
+            onSuccess={() => setShowMaintenanceForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
