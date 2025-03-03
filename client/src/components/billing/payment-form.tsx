@@ -47,7 +47,7 @@ export function PaymentForm({ invoice, onSuccess }: PaymentFormProps) {
 
       toast({
         title: "Payment Initiated",
-        description: paymentMethod === "mpesa" 
+        description: paymentMethod === "mpesa"
           ? "Please check your phone for the M-Pesa prompt."
           : "Payment processed successfully.",
       });
@@ -75,7 +75,7 @@ export function PaymentForm({ invoice, onSuccess }: PaymentFormProps) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <RadioGroup
-            value={paymentMethod}
+            defaultValue={paymentMethod}
             onValueChange={(value) => setPaymentMethod(value as "card" | "mpesa")}
           >
             <div className="flex items-center space-x-2">
