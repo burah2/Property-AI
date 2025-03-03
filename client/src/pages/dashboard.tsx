@@ -33,44 +33,74 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    let retryCount = 0;
+    const maxRetries = 5;
 
-    console.log('Attempting WebSocket connection to:', wsUrl);
+    function connect() {
+      try {
+        // Always use wss:// for Replit as it serves over HTTPS
+        const wsUrl = `wss://${window.location.host}/ws`;
+        console.log('Attempting WebSocket connection to:', wsUrl);
 
-    const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(wsUrl);
 
-    ws.onopen = () => {
-      console.log('WebSocket connection established');
-    };
+        ws.onopen = () => {
+          console.log('WebSocket connection established');
+          retryCount = 0; // Reset retry count on successful connection
+        };
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === "MAINTENANCE_REQUEST") {
-        // Refresh maintenance requests list
-        queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "MAINTENANCE_REQUEST") {
+              queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
+            }
+            if (data.type === "SECURITY_ALERT") {
+              queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+            }
+          } catch (error) {
+            console.error('Error processing WebSocket message:', error);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+          console.log('WebSocket connection closed');
+          if (retryCount < maxRetries) {
+            retryCount++;
+            const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
+            console.log(`Attempting to reconnect in ${timeout}ms...`);
+            setTimeout(connect, timeout);
+          }
+        };
+
+        wsRef.current = ws;
+      } catch (error) {
+        console.error('Failed to establish WebSocket connection:', error);
+        if (retryCount < maxRetries) {
+          retryCount++;
+          const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
+          setTimeout(connect, timeout);
+        }
       }
-      if (data.type === "SECURITY_ALERT" || data.type === "URGENT_MAINTENANCE") {
-        queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
-      }
-    };
+    }
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    connect();
 
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-
-    wsRef.current = ws;
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
       }
     };
   }, []);
+
+  // Get property details for a maintenance request
+  const getPropertyDetails = (propertyId: number) => {
+    return properties?.find(p => p.id === propertyId);
+  };
 
   if (propertiesLoading || maintenanceLoading || alertsLoading) {
     return (
@@ -79,11 +109,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  // Get property details for a maintenance request
-  const getPropertyDetails = (propertyId: number) => {
-    return properties?.find(p => p.id === propertyId);
-  };
 
   return (
     <div className="flex h-screen bg-background">

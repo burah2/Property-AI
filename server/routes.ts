@@ -10,10 +10,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
   const httpServer = createServer(app);
-  // Configure WebSocket server with explicit port
+
+  // Configure WebSocket server
   const wss = new WebSocketServer({ 
-    server: httpServer,
+    noServer: true,
     path: '/ws'
+  });
+
+  // Handle upgrade requests
+  httpServer.on('upgrade', (request, socket, head) => {
+    if (request.url?.startsWith('/ws')) {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    }
   });
 
   // WebSocket connection handler
@@ -79,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New route for completing maintenance requests
+  // Route for completing maintenance requests
   app.post("/api/maintenance/:id/complete", async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'staff') {
       return res.sendStatus(401);
@@ -102,30 +112,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
-  });
-
-  // Security alert routes
-  app.get("/api/alerts", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const alerts = await storage.getSecurityAlerts();
-    res.json(alerts);
-  });
-
-  app.post("/api/alerts", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const alert = await storage.createSecurityAlert(req.body);
-
-    // Notify via WebSocket
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({
-          type: "SECURITY_ALERT",
-          data: alert,
-        }));
-      }
-    });
-
-    res.status(201).json(alert);
   });
 
   return httpServer;
