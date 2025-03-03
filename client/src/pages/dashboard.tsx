@@ -33,8 +33,11 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
+    // Get the current port from the window location
+    const port = window.location.port;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const wsUrl = `${protocol}//${window.location.hostname}:${port}/ws`;
+
     const ws = new WebSocket(wsUrl);
 
     ws.onmessage = (event) => {
