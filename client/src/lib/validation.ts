@@ -13,12 +13,8 @@ export const insertUserSchema = z.object({
   email: z.string().email("Must be a valid email address"),
   phone: z.string().optional(),
   specialization: z.string().optional(),
-  role: z.enum(["admin", "staff"]).default("staff"),
+  role: z.enum(["admin", "staff", "tenant", "landlord"]).default("tenant"),
 });
-
-export type LoginUser = z.infer<typeof loginUserSchema>;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-import { z } from "zod";
 
 // User authentication schemas
 export const loginSchema = z.object({
@@ -30,7 +26,7 @@ export const registerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   name: z.string().min(2, "Name must be at least 2 characters"),
-  role: z.enum(["tenant", "owner", "manager"]),
+  role: z.enum(["tenant", "landlord", "owner", "manager", "admin", "staff"]),
 });
 
 // Form validation functions
@@ -41,3 +37,6 @@ export const validateEmail = (email: string) => {
 export const validatePassword = (password: string) => {
   return password.length >= 6;
 };
+
+export type LoginUser = z.infer<typeof loginUserSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
