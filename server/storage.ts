@@ -1,4 +1,4 @@
-import { type InsertUser, type User, type Property, type SecurityAlert, type MaintenanceRequest } from "@shared/schema";
+import { type InsertUser, type User, type Property, type SecurityAlert, type MaintenanceRequest, type Invoice, type Payment, type PaymentReminder } from "@shared/schema";
 import createMemoryStore from "memorystore";
 import session from "express-session";
 
@@ -25,6 +25,7 @@ export interface IStorage {
   // Maintenance operations
   getMaintenanceRequests(): Promise<MaintenanceRequest[]>;
   createMaintenanceRequest(request: Omit<MaintenanceRequest, "id">): Promise<MaintenanceRequest>;
+  updateMaintenanceRequest(id: number, updates: Partial<MaintenanceRequest>): Promise<MaintenanceRequest>;
 
   // Invoice operations
   createInvoice(invoice: Omit<Invoice, "id">): Promise<Invoice>;
@@ -42,6 +43,9 @@ export interface IStorage {
   createPaymentReminder(reminder: Omit<PaymentReminder, "id">): Promise<PaymentReminder>;
   getDuePaymentReminders(): Promise<PaymentReminder[]>;
   updatePaymentReminder(id: number, updates: Partial<PaymentReminder>): Promise<PaymentReminder>;
+
+  // Staff operations
+  getStaffBySpecialization(specialization: string): Promise<User | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -141,6 +145,16 @@ export class MemStorage implements IStorage {
     return newRequest;
   }
 
+  async updateMaintenanceRequest(id: number, updates: Partial<MaintenanceRequest>): Promise<MaintenanceRequest> {
+    const request = Array.from(this.maintenanceRequests.values()).find(r => r.id === id);
+    if (!request) {
+      throw new Error("Maintenance request not found");
+    }
+    const updatedRequest = { ...request, ...updates };
+    this.maintenanceRequests.set(id, updatedRequest);
+    return updatedRequest;
+  }
+
   // Invoice operations
   async createInvoice(invoice: Omit<Invoice, "id">): Promise<Invoice> {
     const id = this.invoiceIdCounter++;
@@ -215,6 +229,12 @@ export class MemStorage implements IStorage {
     const updatedReminder = { ...reminder, ...updates };
     this.paymentReminders.set(id, updatedReminder);
     return updatedReminder;
+  }
+
+  async getStaffBySpecialization(specialization: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.specialization === specialization && user.role === 'staff'
+    );
   }
 }
 

@@ -19,33 +19,49 @@ const africastalking = AfricasTalking({
 export async function createMaintenanceRequest(
   request: Omit<MaintenanceRequest, "id" | "assignedStaffId" | "status" | "createdAt" | "completedAt" | "resolution">
 ): Promise<MaintenanceRequest> {
-  // Determine the required specialization based on the maintenance category
-  const requiredSpecialization = MAINTENANCE_CATEGORIES[request.category as keyof typeof MAINTENANCE_CATEGORIES];
-
-  // Find available staff with the required specialization
-  const availableStaff = await storage.getStaffBySpecialization(requiredSpecialization);
-  
-  if (!availableStaff) {
-    throw new Error(`No available ${requiredSpecialization} found`);
-  }
-
-  // Create the maintenance request with assigned staff
+  // Create the maintenance request first without staff assignment
   const maintenanceRequest = await storage.createMaintenanceRequest({
     ...request,
-    assignedStaffId: availableStaff.id,
-    status: "assigned",
+    assignedStaffId: null,
+    status: "pending",
+    createdAt: new Date(),
+    completedAt: null,
+    resolution: null,
   });
 
-  // Notify assigned staff
-  await notifyStaff(availableStaff, maintenanceRequest);
+  try {
+    // Determine the required specialization based on the maintenance category
+    const requiredSpecialization = MAINTENANCE_CATEGORIES[request.category as keyof typeof MAINTENANCE_CATEGORIES];
 
-  // Notify tenant that request has been created and assigned
-  const tenant = await storage.getUser(request.tenantId);
-  if (tenant) {
-    await notifyTenant(tenant, maintenanceRequest, "created");
+    // Find available staff with the required specialization
+    const availableStaff = await storage.getStaffBySpecialization(requiredSpecialization);
+
+    if (availableStaff) {
+      // Update the request with assigned staff
+      const updatedRequest = await storage.updateMaintenanceRequest(maintenanceRequest.id, {
+        assignedStaffId: availableStaff.id,
+        status: "assigned",
+      });
+
+      // Notify assigned staff
+      await notifyStaff(availableStaff, updatedRequest);
+
+      // Notify tenant that request has been created and assigned
+      const tenant = await storage.getUser(request.tenantId);
+      if (tenant) {
+        await notifyTenant(tenant, updatedRequest, "created");
+      }
+
+      return updatedRequest;
+    } else {
+      // If no staff available, keep the request in pending state
+      return maintenanceRequest;
+    }
+  } catch (error) {
+    // If there's an error in staff assignment, the request still exists in pending state
+    console.error("Error assigning staff to maintenance request:", error);
+    return maintenanceRequest;
   }
-
-  return maintenanceRequest;
 }
 
 export async function completeMaintenanceRequest(
