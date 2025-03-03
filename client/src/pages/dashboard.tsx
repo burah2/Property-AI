@@ -11,7 +11,7 @@ import { CompletionForm } from "@/components/maintenance/completion-form";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Wrench, Home } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Dashboard() {
@@ -56,6 +56,11 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  // Get property details for a maintenance request
+  const getPropertyDetails = (propertyId: number) => {
+    return properties?.find(p => p.id === propertyId);
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -118,33 +123,46 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {maintenanceRequests?.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{request.title}</p>
-                        <p className="text-sm text-muted-foreground">{request.description}</p>
+                  {maintenanceRequests?.map((request) => {
+                    const property = getPropertyDetails(request.propertyId);
+                    return (
+                      <div key={request.id} className="p-4 border rounded-lg space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">{request.title}</p>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <Home className="h-4 w-4" />
+                              <span>Unit {property?.name}</span>
+                              <Wrench className="h-4 w-4 ml-2" />
+                              <span className="capitalize">{request.category}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-2">{request.description}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              request.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                              request.status === "assigned" ? "bg-blue-100 text-blue-800" :
+                              request.status === "completed" ? "bg-green-100 text-green-800" :
+                              "bg-gray-100 text-gray-800"
+                            }`}>
+                              {request.status}
+                            </span>
+                            {user?.role === 'staff' && 
+                             request.status !== 'completed' && 
+                             request.assignedStaffId === user.id && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedRequest(request)}
+                              >
+                                Complete
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          request.status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                          request.status === "assigned" ? "bg-blue-100 text-blue-800" :
-                          request.status === "completed" ? "bg-green-100 text-green-800" :
-                          "bg-gray-100 text-gray-800"
-                        }`}>
-                          {request.status}
-                        </span>
-                        {user?.role === 'staff' && request.status !== 'completed' && request.assignedStaffId === user.id && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedRequest(request)}
-                          >
-                            Complete
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
