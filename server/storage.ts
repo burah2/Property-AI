@@ -105,10 +105,16 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    try {
+      const id = this.userIdCounter++;
+      const user = { ...insertUser, id };
+      this.users.set(id, user);
+      console.log('User created successfully:', { id, username: user.username });
+      return user;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw new Error('Failed to create user in storage');
+    }
   }
 
   async getAllUsers(): Promise<User[]> {

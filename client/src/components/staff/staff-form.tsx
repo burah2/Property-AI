@@ -33,8 +33,17 @@ export function StaffForm({ onSuccess }: StaffFormProps) {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/register", data);
-      return response.json();
+      try {
+        const response = await apiRequest("POST", "/api/register", data);
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.message || "Registration failed");
+        }
+        return result;
+      } catch (error: any) {
+        console.error("Registration error:", error);
+        throw new Error(error.message || "Failed to create account");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/staff"] });
@@ -46,9 +55,10 @@ export function StaffForm({ onSuccess }: StaffFormProps) {
       onSuccess?.();
     },
     onError: (error: Error) => {
+      console.error("Registration error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Registration Failed",
+        description: error.message || "We were unable to create your account",
         variant: "destructive",
       });
     },
@@ -153,7 +163,7 @@ export function StaffForm({ onSuccess }: StaffFormProps) {
         />
 
         <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-          Register Staff Member
+          {createMutation.isPending ? 'Registering...' : 'Register Staff Member'}
         </Button>
       </form>
     </Form>
