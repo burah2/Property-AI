@@ -8,7 +8,7 @@ import { CompletionForm } from "@/components/maintenance/completion-form";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, Wrench, Home } from "lucide-react";
+import { Loader2, Wrench, Home, WrenchIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Dashboard() {
@@ -29,8 +29,9 @@ export default function Dashboard() {
     // Function to create WebSocket connection
     const connectWebSocket = () => {
       try {
-        // For Replit, always use wss:// and the current host
-        const wsUrl = `wss://${window.location.host}/ws`;
+        // For Replit, use wss or ws based on protocol
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
         console.log('Connecting to WebSocket:', wsUrl);
 
         const ws = new WebSocket(wsUrl);
@@ -49,6 +50,13 @@ export default function Dashboard() {
             console.error('WebSocket message error:', error);
           }
         };
+
+        // Add global error handler for promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+          console.error('Unhandled promise rejection:', event.reason);
+          // Prevent the default handler
+          event.preventDefault();
+        });
 
         ws.onerror = (error) => {
           console.error('WebSocket error:', error);

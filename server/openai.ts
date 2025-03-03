@@ -1,7 +1,14 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY || "" 
+});
+
+// Log warning if API key is not present
+if (!process.env.OPENAI_API_KEY) {
+  console.warn("WARNING: OPENAI_API_KEY environment variable is not set. Sentiment analysis will not work correctly.");
+}
 
 export async function analyzeSentiment(text: string): Promise<{
   rating: number;
