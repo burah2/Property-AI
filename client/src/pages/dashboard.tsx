@@ -33,23 +33,43 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    // Get the current port from the window location
-    const port = window.location.port;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.hostname}:${port}/ws`;
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+    console.log('Attempting WebSocket connection to:', wsUrl);
 
     const ws = new WebSocket(wsUrl);
 
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      if (data.type === "MAINTENANCE_REQUEST") {
+        // Refresh maintenance requests list
+        queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
+      }
       if (data.type === "SECURITY_ALERT" || data.type === "URGENT_MAINTENANCE") {
         queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
         queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
       }
     };
 
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
     wsRef.current = ws;
-    return () => ws.close();
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
   }, []);
 
   if (propertiesLoading || maintenanceLoading || alertsLoading) {
@@ -115,8 +135,8 @@ export default function Dashboard() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Maintenance Requests</CardTitle>
                 {user?.role === "tenant" && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setShowMaintenanceForm(true)}
                   >
@@ -150,17 +170,17 @@ export default function Dashboard() {
                             }`}>
                               {request.status}
                             </span>
-                            {user?.role === 'staff' && 
-                             request.status !== 'completed' && 
-                             request.assignedStaffId === user.id && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setSelectedRequest(request)}
-                              >
-                                Complete
-                              </Button>
-                            )}
+                            {user?.role === 'staff' &&
+                              request.status !== 'completed' &&
+                              request.assignedStaffId === user.id && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setSelectedRequest(request)}
+                                >
+                                  Complete
+                                </Button>
+                              )}
                           </div>
                         </div>
                       </div>
@@ -178,8 +198,8 @@ export default function Dashboard() {
           <DialogHeader>
             <DialogTitle>New Maintenance Request</DialogTitle>
           </DialogHeader>
-          <MaintenanceRequestForm 
-            propertyId={properties?.[0]?.id || 0} 
+          <MaintenanceRequestForm
+            propertyId={properties?.[0]?.id || 0}
             onSuccess={() => setShowMaintenanceForm(false)}
           />
         </DialogContent>
@@ -191,7 +211,7 @@ export default function Dashboard() {
             <DialogTitle>Complete Maintenance Request</DialogTitle>
           </DialogHeader>
           {selectedRequest && (
-            <CompletionForm 
+            <CompletionForm
               requestId={selectedRequest.id}
               onSuccess={() => setSelectedRequest(null)}
             />

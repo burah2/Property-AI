@@ -10,7 +10,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // Configure WebSocket server with explicit port
+  const wss = new WebSocketServer({ 
+    server: httpServer,
+    path: '/ws'
+  });
+
+  // WebSocket connection handler
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+
+    ws.on('error', console.error);
+
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
+    });
+  });
 
   // Staff routes
   app.get("/api/staff", async (req, res) => {
@@ -48,18 +63,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tenantId: req.user.id,
       });
 
-      // Notify via WebSocket for urgent requests
-      const sentiment = await analyzeSentiment(req.body.description);
-      if (sentiment.rating <= 2) {
-        wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-              type: "URGENT_MAINTENANCE",
-              data: request,
-            }));
-          }
-        });
-      }
+      // Notify via WebSocket for all maintenance requests
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: "MAINTENANCE_REQUEST",
+            data: request,
+          }));
+        }
+      });
 
       res.status(201).json(request);
     } catch (error: any) {
