@@ -97,11 +97,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Get property details for a maintenance request
-  const getPropertyDetails = (propertyId: number) => {
-    return properties?.find(p => p.id === propertyId);
-  };
-
   if (propertiesLoading || maintenanceLoading || alertsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -109,6 +104,11 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  // Get property details for a maintenance request
+  const getPropertyDetails = (propertyId: number) => {
+    return properties?.find(p => p.id === propertyId);
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -119,43 +119,9 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold">
               Welcome, {user?.name}
             </h1>
-            <Button variant="outline">Generate Report</Button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Smart Metering</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <UtilityMonitor />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Monitoring</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SecurityFeed alerts={securityAlerts || []} />
-              </CardContent>
-            </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Properties</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  {properties?.map((property) => (
-                    <PropertyCard key={property.id} property={property} />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Maintenance Requests</CardTitle>
