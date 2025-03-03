@@ -7,6 +7,7 @@ import PropertyCard from "@/components/dashboard/property-card";
 import UtilityMonitor from "@/components/dashboard/utility-monitor";
 import SecurityFeed from "@/components/dashboard/security-feed";
 import { MaintenanceRequestForm } from "@/components/maintenance/request-form";
+import { CompletionForm } from "@/components/maintenance/completion-form";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const wsRef = useRef<WebSocket | null>(null);
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
 
   const { data: properties, isLoading: propertiesLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -104,13 +106,15 @@ export default function Dashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Maintenance Requests</CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowMaintenanceForm(true)}
-                >
-                  New Request
-                </Button>
+                {user?.role === 'tenant' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowMaintenanceForm(true)}
+                  >
+                    New Request
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -120,13 +124,25 @@ export default function Dashboard() {
                         <p className="font-medium">{request.title}</p>
                         <p className="text-sm text-muted-foreground">{request.description}</p>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        request.status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                        request.status === "in_progress" ? "bg-blue-100 text-blue-800" :
-                        "bg-green-100 text-green-800"
-                      }`}>
-                        {request.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          request.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                          request.status === "assigned" ? "bg-blue-100 text-blue-800" :
+                          request.status === "completed" ? "bg-green-100 text-green-800" :
+                          "bg-gray-100 text-gray-800"
+                        }`}>
+                          {request.status}
+                        </span>
+                        {user?.role === 'staff' && request.status !== 'completed' && request.assignedStaffId === user.id && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedRequest(request)}
+                          >
+                            Complete
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -145,6 +161,20 @@ export default function Dashboard() {
             propertyId={properties?.[0]?.id || 0} 
             onSuccess={() => setShowMaintenanceForm(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete Maintenance Request</DialogTitle>
+          </DialogHeader>
+          {selectedRequest && (
+            <CompletionForm 
+              requestId={selectedRequest.id}
+              onSuccess={() => setSelectedRequest(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

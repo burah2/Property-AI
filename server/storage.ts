@@ -1,10 +1,9 @@
-import { type InsertUser, type User, type Property, type SecurityAlert, type MaintenanceRequest, type Invoice, type Payment, type PaymentReminder } from "@shared/schema";
+import { type InsertUser, type User, type Property, type SecurityAlert, type MaintenanceRequest, type MaintenanceReport, type Invoice, type Payment, type PaymentReminder } from "@shared/schema";
 import createMemoryStore from "memorystore";
 import session from "express-session";
 
 const MemoryStore = createMemoryStore(session);
 
-// Add to the existing IStorage interface
 export interface IStorage {
   sessionStore: session.Store;
 
@@ -12,7 +11,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  getAllUsers(): Promise<User[]>; // Added getAllUsers method
+  getAllUsers(): Promise<User[]>;
 
   // Property operations
   getProperties(): Promise<Property[]>;
@@ -25,8 +24,10 @@ export interface IStorage {
 
   // Maintenance operations
   getMaintenanceRequests(): Promise<MaintenanceRequest[]>;
+  getMaintenanceRequest(id: number): Promise<MaintenanceRequest | undefined>;
   createMaintenanceRequest(request: Omit<MaintenanceRequest, "id">): Promise<MaintenanceRequest>;
   updateMaintenanceRequest(id: number, updates: Partial<MaintenanceRequest>): Promise<MaintenanceRequest>;
+  createMaintenanceReport(report: Omit<MaintenanceReport, "id">): Promise<MaintenanceReport>;
 
   // Invoice operations
   createInvoice(invoice: Omit<Invoice, "id">): Promise<Invoice>;
@@ -54,12 +55,14 @@ export class MemStorage implements IStorage {
   private properties: Map<number, Property>;
   private securityAlerts: Map<number, SecurityAlert>;
   private maintenanceRequests: Map<number, MaintenanceRequest>;
+  private maintenanceReports: Map<number, MaintenanceReport>;
   public sessionStore: session.Store;
 
   private userIdCounter: number;
   private propertyIdCounter: number;
   private alertIdCounter: number;
   private requestIdCounter: number;
+  private reportIdCounter: number;
   private invoices: Map<number, Invoice>;
   private payments: Map<number, Payment>;
   private paymentReminders: Map<number, PaymentReminder>;
@@ -72,6 +75,7 @@ export class MemStorage implements IStorage {
     this.properties = new Map();
     this.securityAlerts = new Map();
     this.maintenanceRequests = new Map();
+    this.maintenanceReports = new Map();
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
@@ -80,6 +84,7 @@ export class MemStorage implements IStorage {
     this.propertyIdCounter = 1;
     this.alertIdCounter = 1;
     this.requestIdCounter = 1;
+    this.reportIdCounter = 1;
     this.invoices = new Map();
     this.payments = new Map();
     this.paymentReminders = new Map();
@@ -104,6 +109,10 @@ export class MemStorage implements IStorage {
     const user = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
   }
 
   // Property operations
@@ -139,6 +148,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.maintenanceRequests.values());
   }
 
+  async getMaintenanceRequest(id: number): Promise<MaintenanceRequest | undefined> {
+    return this.maintenanceRequests.get(id);
+  }
+
   async createMaintenanceRequest(request: Omit<MaintenanceRequest, "id">): Promise<MaintenanceRequest> {
     const id = this.requestIdCounter++;
     const newRequest = { ...request, id };
@@ -154,6 +167,13 @@ export class MemStorage implements IStorage {
     const updatedRequest = { ...request, ...updates };
     this.maintenanceRequests.set(id, updatedRequest);
     return updatedRequest;
+  }
+
+  async createMaintenanceReport(report: Omit<MaintenanceReport, "id">): Promise<MaintenanceReport> {
+    const id = this.reportIdCounter++;
+    const newReport = { ...report, id, createdAt: new Date() };
+    this.maintenanceReports.set(id, newReport);
+    return newReport;
   }
 
   // Invoice operations
@@ -236,10 +256,6 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(
       (user) => user.specialization === specialization && user.role === 'staff'
     );
-  }
-
-  async getAllUsers(): Promise<User[]> { // Added getAllUsers method implementation
-    return Array.from(this.users.values());
   }
 }
 

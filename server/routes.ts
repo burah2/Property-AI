@@ -4,7 +4,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { analyzeSentiment } from "./openai";
-import { createMaintenanceRequest } from "./services/maintenance";
+import { createMaintenanceRequest, completeMaintenanceRequest } from "./services/maintenance";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -62,6 +62,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(201).json(request);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // New route for completing maintenance requests
+  app.post("/api/maintenance/:id/complete", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'staff') {
+      return res.sendStatus(401);
+    }
+
+    try {
+      await completeMaintenanceRequest(
+        parseInt(req.params.id),
+        {
+          staffId: req.user.id,
+          description: req.body.description,
+          workDone: req.body.workDone,
+          materials: req.body.materials || [],
+          cost: req.body.cost,
+          timeSpent: req.body.timeSpent,
+        }
+      );
+
+      res.sendStatus(200);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
