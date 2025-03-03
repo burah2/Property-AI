@@ -111,7 +111,7 @@ export default function Dashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Maintenance Requests</CardTitle>
-                {user?.role === 'tenant' && (
+                {user?.role === "tenant" && (
                   <Button 
                     variant="outline" 
                     size="sm"
