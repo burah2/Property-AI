@@ -3,9 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Property, MaintenanceRequest, SecurityAlert } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import Sidebar from "@/components/dashboard/sidebar";
-import PropertyCard from "@/components/dashboard/property-card";
-import UtilityMonitor from "@/components/dashboard/utility-monitor";
-import SecurityFeed from "@/components/dashboard/security-feed";
 import { MaintenanceRequestForm } from "@/components/maintenance/request-form";
 import { CompletionForm } from "@/components/maintenance/completion-form";
 import { useEffect, useRef, useState } from "react";
@@ -28,25 +25,18 @@ export default function Dashboard() {
     queryKey: ["/api/maintenance"],
   });
 
-  const { data: securityAlerts, isLoading: alertsLoading } = useQuery<SecurityAlert[]>({
-    queryKey: ["/api/alerts"],
-  });
-
   useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 5;
-
-    function connect() {
+    // Function to create WebSocket connection
+    const connectWebSocket = () => {
       try {
-        // Always use wss:// for Replit as it serves over HTTPS
+        // For Replit, always use wss:// and the current host
         const wsUrl = `wss://${window.location.host}/ws`;
-        console.log('Attempting WebSocket connection to:', wsUrl);
+        console.log('Connecting to WebSocket:', wsUrl);
 
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-          console.log('WebSocket connection established');
-          retryCount = 0; // Reset retry count on successful connection
+          console.log('WebSocket connected successfully');
         };
 
         ws.onmessage = (event) => {
@@ -55,11 +45,8 @@ export default function Dashboard() {
             if (data.type === "MAINTENANCE_REQUEST") {
               queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
             }
-            if (data.type === "SECURITY_ALERT") {
-              queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-            }
           } catch (error) {
-            console.error('Error processing WebSocket message:', error);
+            console.error('WebSocket message error:', error);
           }
         };
 
@@ -68,27 +55,18 @@ export default function Dashboard() {
         };
 
         ws.onclose = () => {
-          console.log('WebSocket connection closed');
-          if (retryCount < maxRetries) {
-            retryCount++;
-            const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
-            console.log(`Attempting to reconnect in ${timeout}ms...`);
-            setTimeout(connect, timeout);
-          }
+          console.log('WebSocket closed, attempting reconnect in 5s');
+          setTimeout(connectWebSocket, 5000);
         };
 
         wsRef.current = ws;
       } catch (error) {
-        console.error('Failed to establish WebSocket connection:', error);
-        if (retryCount < maxRetries) {
-          retryCount++;
-          const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
-          setTimeout(connect, timeout);
-        }
+        console.error('WebSocket connection error:', error);
+        setTimeout(connectWebSocket, 5000);
       }
-    }
+    };
 
-    connect();
+    connectWebSocket();
 
     return () => {
       if (wsRef.current) {
@@ -97,7 +75,7 @@ export default function Dashboard() {
     };
   }, []);
 
-  if (propertiesLoading || maintenanceLoading || alertsLoading) {
+  if (propertiesLoading || maintenanceLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -105,7 +83,6 @@ export default function Dashboard() {
     );
   }
 
-  // Get property details for a maintenance request
   const getPropertyDetails = (propertyId: number) => {
     return properties?.find(p => p.id === propertyId);
   };
