@@ -45,6 +45,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(staffMembers);
   });
 
+  // Test login page
+  app.get("/login-test", (req, res) => {
+    res.sendFile("public/login.html", { root: "../client" });
+  });
+
   // Property routes
   app.get("/api/properties", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
