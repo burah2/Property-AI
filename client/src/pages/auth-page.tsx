@@ -1,54 +1,43 @@
-import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForm } from "react-hook-form";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { insertUserSchema, loginUserSchema } from "@/lib/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, type InsertUser } from "@shared/schema";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { useLocation } from "wouter";
 
 export default function AuthPage() {
-  const { loginMutation, registerMutation, user } = useAuth();
+  const { toast } = useToast();
+  const { user, login, register } = useAuth();
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
 
-  // Move the redirection logic to useEffect to avoid conditional hook issues
   useEffect(() => {
     if (user) {
+      toast({
+        title: "Logged In",
+        description: "Redirecting to dashboard...",
+      });
       setLocation("/dashboard");
     }
   }, [user, setLocation]);
-  
-  // Create a state for rendering content or redirect message
-  const [showContent, setShowContent] = useState(true);
-  
-  useEffect(() => {
-    if (user) {
-      setShowContent(false);
-    } else {
-      setShowContent(true);
-    }
-  }, [user]);
+
+  if (user) {
+    return <div>Redirecting...</div>;
+  }
 
   const loginForm = useForm({
-    resolver: zodResolver(
-      insertUserSchema.pick({ username: true, password: true })
-    ),
+    resolver: zodResolver(loginUserSchema),
   });
 
   const registerForm = useForm({
     resolver: zodResolver(insertUserSchema),
   });
-
-  // Instead of early return, conditionally render content
-  if (!showContent) {
-    return <div>Redirecting...</div>;
-  }
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -67,221 +56,186 @@ export default function AuthPage() {
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
-
               <TabsContent value="login">
-                <Form {...loginForm}>
-                  <form
-                    onSubmit={loginForm.handleSubmit((data) =>
-                      loginMutation.mutate(data)
+                <form
+                  onSubmit={loginForm.handleSubmit(async (data) => {
+                    try {
+                      await login(data.username, data.password);
+                      toast({
+                        title: "Login Successful",
+                        description: "Welcome back!",
+                      });
+                    } catch (error) {
+                      toast({
+                        variant: "destructive",
+                        title: "Login Failed",
+                        description:
+                          "Please check your username and password.",
+                      });
+                    }
+                  })}
+                  className="space-y-4 pt-4"
+                >
+                  <div className="space-y-2">
+                    <Input
+                      id="login-username"
+                      placeholder="Username"
+                      {...loginForm.register("username")}
+                    />
+                    {loginForm.formState.errors.username && (
+                      <p className="text-sm text-red-500">
+                        {loginForm.formState.errors.username.message}
+                      </p>
                     )}
-                    className="space-y-4"
-                  >
-                    <FormField
-                      control={loginForm.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label>Username</Label>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={loginForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label>Password</Label>
-                          <div className="relative">
-                            <FormControl>
-                              <Input 
-                                type={showPassword ? "text" : "password"} 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-2 top-1/2 -translate-y-1/2"
-                              onClick={togglePasswordVisibility}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex justify-end">
+                  </div>
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Password"
+                        {...loginForm.register("password")}
+                      />
                       <Button
                         type="button"
-                        variant="link"
-                        className="px-0 text-sm text-muted-foreground"
-                        onClick={() => {
-                          // TODO: Implement forgot password functionality
-                          alert("Forgot password functionality coming soon!");
-                        }}
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0"
+                        onClick={togglePasswordVisibility}
                       >
-                        Forgot password?
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={loginMutation.isPending}
-                    >
-                      {loginMutation.isPending && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Login
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-
-              <TabsContent value="register">
-                <Form {...registerForm}>
-                  <form
-                    onSubmit={registerForm.handleSubmit((data) =>
-                      registerMutation.mutate(data as InsertUser)
+                    {loginForm.formState.errors.password && (
+                      <p className="text-sm text-red-500">
+                        {loginForm.formState.errors.password.message}
+                      </p>
                     )}
-                    className="space-y-4"
-                  >
-                    <FormField
-                      control={registerForm.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label>Username</Label>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Login
+                  </Button>
+                </form>
+              </TabsContent>
+              <TabsContent value="register">
+                <form
+                  onSubmit={registerForm.handleSubmit(async (data) => {
+                    try {
+                      await register(
+                        data.username,
+                        data.password,
+                        data.name,
+                        data.email,
+                        data.role
+                      );
+                      toast({
+                        title: "Registration Successful",
+                        description: "Your account has been created.",
+                      });
+                    } catch (error) {
+                      toast({
+                        variant: "destructive",
+                        title: "Registration Failed",
+                        description:
+                          "There was a problem creating your account.",
+                      });
+                    }
+                  })}
+                  className="space-y-4 pt-4"
+                >
+                  <div className="space-y-2">
+                    <Input
+                      id="register-username"
+                      placeholder="Username"
+                      {...registerForm.register("username")}
                     />
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label>Password</Label>
-                          <div className="relative">
-                            <FormControl>
-                              <Input 
-                                type={showPassword ? "text" : "password"} 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-2 top-1/2 -translate-y-1/2"
-                              onClick={togglePasswordVisibility}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                    {registerForm.formState.errors.username && (
+                      <p className="text-sm text-red-500">
+                        {registerForm.formState.errors.username.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Input
+                        id="register-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Password"
+                        {...registerForm.register("password")}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0"
+                        onClick={togglePasswordVisibility}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    {registerForm.formState.errors.password && (
+                      <p className="text-sm text-red-500">
+                        {registerForm.formState.errors.password.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      id="register-name"
+                      placeholder="Full Name"
+                      {...registerForm.register("name")}
                     />
-                    <FormField
-                      control={registerForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label>Full Name</Label>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                    {registerForm.formState.errors.name && (
+                      <p className="text-sm text-red-500">
+                        {registerForm.formState.errors.name.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      id="register-email"
+                      type="email"
+                      placeholder="Email"
+                      {...registerForm.register("email")}
                     />
-                    <FormField
-                      control={registerForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label>Email</Label>
-                          <FormControl>
-                            <Input type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="role"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label>Role</Label>
-                          <FormControl>
-                            <select
-                              {...field}
-                              className="w-full px-3 py-2 border rounded-md"
-                            >
-                              <option value="tenant">Tenant</option>
-                              <option value="landlord">Landlord</option>
-                            </select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={registerMutation.isPending}
+                    {registerForm.formState.errors.email && (
+                      <p className="text-sm text-red-500">
+                        {registerForm.formState.errors.email.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <select
+                      {...registerForm.register("role")}
+                      className="w-full px-3 py-2 border rounded-md"
                     >
-                      {registerMutation.isPending && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Register
-                    </Button>
-                  </form>
-                </Form>
+                      <option value="tenant">Tenant</option>
+                      <option value="landlord">Landlord</option>
+                    </select>
+                    {registerForm.formState.errors.role && (
+                      <p className="text-sm text-red-500">
+                        {registerForm.formState.errors.role.message}
+                      </p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Register
+                  </Button>
+                </form>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
       </div>
-
-      <div
-        className="hidden lg:block bg-cover bg-center"
-        style={{
-          backgroundImage:
-            'url("https://images.unsplash.com/photo-1560518883-ce09059eeffa")',
-        }}
-      >
-        <div className="h-full w-full bg-black/50 p-12 flex items-center">
-          <div className="max-w-lg">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              Smart Property Management
-            </h2>
-            <p className="text-gray-200">
-              Join PropSmart to experience the future of property management with
-              AI-powered insights, real-time monitoring, and seamless
-              communication.
-            </p>
-          </div>
-        </div>
-      </div>
+      <div className="hidden lg:block bg-gradient-to-br from-primary to-primary-foreground" />
     </div>
   );
 }
