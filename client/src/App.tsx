@@ -9,6 +9,7 @@ import LandingPage from "@/pages/landing-page";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import BillingPage from "@/pages/billing";
+import StaffManagementPage from "@/pages/staff-management";
 
 function Router() {
   return (
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/dashboard/billing" component={BillingPage} />
+      <ProtectedRoute path="/dashboard/staff" component={StaffManagementPage} />
       <Route component={NotFound} />
     </Switch>
   );

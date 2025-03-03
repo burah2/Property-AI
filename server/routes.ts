@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { WebSocketServer } from "ws";
+import { WebSocket, WebSocketServer } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { analyzeSentiment } from "./openai";
@@ -11,6 +11,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+
+  // Staff routes
+  app.get("/api/staff", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'landlord') return res.sendStatus(401);
+    const allUsers = await storage.getAllUsers();
+    const staffMembers = allUsers.filter(user => user.role === 'staff');
+    res.json(staffMembers);
+  });
 
   // Property routes
   app.get("/api/properties", async (req, res) => {
@@ -54,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(201).json(request);
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });

@@ -10,6 +10,7 @@ import {
   Shield,
   MessageSquare,
   CreditCard,
+  Users,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -24,8 +25,9 @@ const getMenuItems = (role: string) => {
     { icon: Settings, label: "Settings", href: "/dashboard/settings" },
   ];
 
-  // Only show billing for tenants
-  if (role === 'tenant') {
+  if (role === 'landlord') {
+    baseItems.splice(2, 0, { icon: Users, label: "Staff", href: "/dashboard/staff" });
+  } else if (role === 'tenant') {
     baseItems.splice(6, 0, { icon: CreditCard, label: "Billing", href: "/dashboard/billing" });
   }
 

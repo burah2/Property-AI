@@ -12,6 +12,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>; // Added getAllUsers method
 
   // Property operations
   getProperties(): Promise<Property[]>;
@@ -235,6 +236,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(
       (user) => user.specialization === specialization && user.role === 'staff'
     );
+  }
+
+  async getAllUsers(): Promise<User[]> { // Added getAllUsers method implementation
+    return Array.from(this.users.values());
   }
 }
 
