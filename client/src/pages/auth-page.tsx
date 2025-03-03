@@ -17,9 +17,16 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
 
+  // Move the redirection logic to useEffect to avoid conditional hook issues
+  useEffect(() => {
+    if (user) {
+      setLocation("/dashboard");
+    }
+  }, [user, setLocation]);
+  
+  // Don't return early, as this can cause hook count inconsistencies
   if (user) {
-    setLocation("/dashboard");
-    return null;
+    return <div>Redirecting...</div>;
   }
 
   const loginForm = useForm({

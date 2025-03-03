@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const wsRef = useRef<WebSocket | null>(null);
+  const wsRef = useRef<WebSocket | null>(null); //Moved this line up
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
 
@@ -28,49 +28,51 @@ export default function Dashboard() {
   useEffect(() => {
     // Function to create WebSocket connection
     const connectWebSocket = () => {
-      try {
-        // For Replit, use wss or ws based on protocol
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        console.log('Connecting to WebSocket:', wsUrl);
+      if (!wsRef.current) { //Added this conditional check
+        try {
+          // For Replit, use wss or ws based on protocol
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsUrl = `${protocol}//${window.location.host}/ws`;
+          console.log('Connecting to WebSocket:', wsUrl);
 
-        const ws = new WebSocket(wsUrl);
+          const ws = new WebSocket(wsUrl);
 
-        ws.onopen = () => {
-          console.log('WebSocket connected successfully');
-        };
+          ws.onopen = () => {
+            console.log('WebSocket connected successfully');
+          };
 
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === "MAINTENANCE_REQUEST") {
-              queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
+          ws.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === "MAINTENANCE_REQUEST") {
+                queryClient.invalidateQueries({ queryKey: ["/api/maintenance"] });
+              }
+            } catch (error) {
+              console.error('WebSocket message error:', error);
             }
-          } catch (error) {
-            console.error('WebSocket message error:', error);
-          }
-        };
+          };
 
-        // Add global error handler for promise rejections
-        window.addEventListener('unhandledrejection', function(event) {
-          console.error('Unhandled promise rejection:', event.reason);
-          // Prevent the default handler
-          event.preventDefault();
-        });
+          // Add global error handler for promise rejections
+          window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            // Prevent the default handler
+            event.preventDefault();
+          });
 
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-        };
+          ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+          };
 
-        ws.onclose = () => {
-          console.log('WebSocket closed, attempting reconnect in 5s');
+          ws.onclose = () => {
+            console.log('WebSocket closed, attempting reconnect in 5s');
+            setTimeout(connectWebSocket, 5000);
+          };
+
+          wsRef.current = ws;
+        } catch (error) {
+          console.error('WebSocket connection error:', error);
           setTimeout(connectWebSocket, 5000);
-        };
-
-        wsRef.current = ws;
-      } catch (error) {
-        console.error('WebSocket connection error:', error);
-        setTimeout(connectWebSocket, 5000);
+        }
       }
     };
 

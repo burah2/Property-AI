@@ -29,15 +29,14 @@ export function CompletionForm({ requestId, onSuccess }: CompletionFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Initialize form with default values to prevent controlled/uncontrolled input switching
+  const [formData, setFormData] = useState(defaultFormValues);
+
   const form = useForm({
     resolver: zodResolver(insertMaintenanceReportSchema),
     defaultValues: {
       requestId,
-      description: "",
-      workDone: "",
-      materials: [],
-      cost: "0",
-      timeSpent: "",
+      ...defaultFormValues,
     },
   });
 
@@ -64,9 +63,13 @@ export function CompletionForm({ requestId, onSuccess }: CompletionFormProps) {
     },
   });
 
+  const onSubmit = (data: any) => {
+    completeMutation.mutate(data);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => completeMutation.mutate(data))} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="description"
