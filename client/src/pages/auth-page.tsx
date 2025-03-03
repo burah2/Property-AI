@@ -24,10 +24,16 @@ export default function AuthPage() {
     }
   }, [user, setLocation]);
   
-  // Don't return early, as this can cause hook count inconsistencies
-  if (user) {
-    return <div>Redirecting...</div>;
-  }
+  // Create a state for rendering content or redirect message
+  const [showContent, setShowContent] = useState(true);
+  
+  useEffect(() => {
+    if (user) {
+      setShowContent(false);
+    } else {
+      setShowContent(true);
+    }
+  }, [user]);
 
   const loginForm = useForm({
     resolver: zodResolver(
@@ -38,6 +44,11 @@ export default function AuthPage() {
   const registerForm = useForm({
     resolver: zodResolver(insertUserSchema),
   });
+
+  // Instead of early return, conditionally render content
+  if (!showContent) {
+    return <div>Redirecting...</div>;
+  }
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
